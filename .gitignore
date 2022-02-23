@@ -1,0 +1,8 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+# Unit test
+.vscode/
+
+# Visual Studio WorkSpace
+Pac-man.code-workspace
