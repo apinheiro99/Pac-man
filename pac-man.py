@@ -1,4 +1,5 @@
 import pygame
+from abc import ABC, abstractmethod
 
 pygame.init()
 
@@ -10,7 +11,21 @@ PRETO = (0, 0, 0)
 AZUL = (0, 0, 255)
 VELOCIDADE = 1
 
-class Cenario:
+class ElementoJogo(ABC):
+    
+    @abstractmethod
+    def pintar(self, tela):
+        pass
+
+    @abstractmethod
+    def calcular_regras(self):
+        pass
+
+    @abstractmethod
+    def processar_eventos(self, eventos):
+        pass
+
+class Cenario(ElementoJogo):
     def __init__(self, tamanho, pac) -> None:
         self.pacman = pac
         self.tamanho = tamanho
@@ -79,10 +94,13 @@ class Cenario:
                 if self.matriz[lin][col] == 1:
                     self.pontos += 1
                     self.matriz[lin][col] = 0
-        
 
+    def processar_eventos(self, eventos):
+        for e in eventos:
+            if e.type == pygame.QUIT:
+                exit()
 
-class Pacman:
+class Pacman(ElementoJogo):
     def __init__(self, tamanho) -> None:
         self.coluna = 1
         self.linha = 1
@@ -177,7 +195,5 @@ if __name__ == "__main__":
 
         # Captura os eventos
         eventos = pygame.event.get()
-        for e in eventos:
-            if e.type == pygame.QUIT:
-                exit()
         pacman.processar_eventos(eventos)
+        cenario.processar_eventos(eventos)
