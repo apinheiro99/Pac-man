@@ -1,5 +1,6 @@
 import pygame
 from abc import ABC, abstractmethod
+import random
 
 pygame.init()
 
@@ -9,7 +10,14 @@ fonte = pygame.font.SysFont("arial", 24, True, False)
 AMARELO = (255, 255, 0)
 PRETO = (0, 0, 0)
 AZUL = (0, 0, 255)
+VERMELHO = (255, 0, 0)
+BRANCO = (255, 255, 255)
+VERDE = (0,255, 0)
 VELOCIDADE = 1
+ACIMA = 1
+ABAIX0 = 2
+DIREITA = 3
+ESQUERDA = 4
 
 class ElementoJogo(ABC):
     
@@ -25,9 +33,11 @@ class ElementoJogo(ABC):
     def processar_eventos(self, eventos):
         pass
 
+
 class Cenario(ElementoJogo):
-    def __init__(self, tamanho, pac) -> None:
-        self.pacman = pac
+    def __init__(self, tamanho, pacman, fantasma) -> None:
+        self.pacman = pacman
+        self.fantasma = fantasma
         self.tamanho = tamanho
         self.pontos = 0
         self.matriz = [
@@ -85,7 +95,25 @@ class Cenario(ElementoJogo):
             self.pintar_linha(tela, numero_linha, linha)
         self.pintar_pontos(tela)
 
+    def get_direcoes (self, linha, coluna):
+        direcoes = []
+
+        if self.matriz[linha - 1][coluna] != 2:
+            direcoes.append(ACIMA)
+        if self.matriz[linha + 1][coluna] != 2:
+            direcoes.append(ABAIX0)        
+        if self.matriz[linha][coluna + 1] != 2:
+            direcoes.append(DIREITA)
+        if self.matriz[linha][coluna - 1] != 2:
+            direcoes.append(ESQUERDA)
+
+        return direcoes
+
     def calcular_regras(self):
+        direcoes = self.get_direcoes(self.fantasma.linha, self.fantasma.coluna)
+        if len(direcoes) >= 3:
+            self.fantasma.esquina(direcoes)
+
         col = self.pacman.coluna_intencao
         lin = self.pacman.linha_intencao
         if 0 <= col < 28 and 0 <= lin < 29:
@@ -94,6 +122,13 @@ class Cenario(ElementoJogo):
                 if self.matriz[lin][col] == 1:
                     self.pontos += 1
                     self.matriz[lin][col] = 0
+
+        col = self.fantasma.coluna_intencao
+        lin = self.fantasma.linha_intencao
+        if 0 <= col < 28 and 0 <= lin < 29 and self.matriz[lin][col] != 2:
+            self.fantasma.aceitar_movimento()
+        else:
+            self.fantasma.recusar_movimento(direcoes)
 
     def processar_eventos(self, eventos):
         for e in eventos:
@@ -175,21 +210,104 @@ class Pacman(ElementoJogo):
                 self.coluna = mouse_x // self.tamanho
                 self.linha = mouse_y // self.tamanho
 
+class Fantasma(ElementoJogo):
+
+    def __init__(self, tamanho, fantasma) -> None:
+        self.coluna = 6
+        self.linha = 1
+        self.coluna_intencao = self.coluna
+        self.linha_intencao = self.linha
+        self.direcao = ABAIX0
+        self.velocidade = 1
+        self.tamanho = tamanho
+        self.fantasma, self.cor = self.seleciona_fantasma(fantasma)
+
+    def seleciona_fantasma(self, fantasma):
+        if fantasma == "blinky":
+            matriz = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0],
+            [0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
+            [0,0,0,0,1,1,2,2,1,1,1,1,2,2,0,0,0,0],
+            [0,0,0,1,1,2,2,2,2,1,1,2,2,2,2,0,0,0],
+            [0,0,0,1,1,2,2,3,3,1,1,2,2,3,3,0,0,0],
+            [0,0,1,1,1,2,2,3,3,1,1,2,2,3,3,1,0,0],
+            [0,0,1,1,1,1,2,2,1,1,1,1,2,2,1,1,0,0],
+            [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+            [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+            [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+            [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+            [0,0,1,1,0,1,1,1,0,0,1,1,1,0,1,1,0,0],
+            [0,0,1,0,0,0,1,1,0,0,1,1,0,0,0,1,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            ]
+            cor = [PRETO, VERMELHO, BRANCO, VERDE]
+        return matriz, cor
+
+    def pintar(self, tela):
+        fatia = self.tamanho // 18
+
+        x = int(self.coluna * self.tamanho)
+        y = int(self.linha * self.tamanho)
+
+        for numero_linha, linha in enumerate(self.fantasma):
+            for numero_coluna, coluna in enumerate(linha):
+                x_inicio = int(x + (numero_coluna * fatia))
+                y_inicio = int(y + (numero_linha * fatia))
+
+                cor = self.cor[coluna]
+
+                pygame.draw.rect(tela, cor, (x_inicio + fatia, y_inicio + fatia, fatia, fatia), 0)
+
+    def calcular_regras(self):
+        if self.direcao == ACIMA:
+            self.linha_intencao -= self.velocidade
+        elif self.direcao == ABAIX0:
+            self.linha_intencao += self.velocidade
+        elif self.direcao == DIREITA:
+            self.coluna_intencao += self.velocidade 
+        elif self.direcao == ESQUERDA:
+            self.coluna_intencao -= self.velocidade 
+
+    def mudar_direcao(self, direcoes):
+        self.direcao = random.choice(direcoes)
+
+    def esquina(self, direcoes):
+        self.mudar_direcao(direcoes)
+
+    def aceitar_movimento(self):
+        self.linha = self.linha_intencao
+        self.coluna = self.coluna_intencao
+
+    def recusar_movimento(self, direcoes):
+        self.linha_intencao = self.linha
+        self.coluna_intencao = self.coluna
+        self.mudar_direcao(direcoes)
+        
+    def processar_eventos(self, eventos):
+        pass
+
 
 if __name__ == "__main__":
     size = 600 // 30
     pacman = Pacman(size)
-    cenario = Cenario(size,pacman)
+    blinky = Fantasma(size, "blinky")
+    cenario = Cenario(size,pacman, blinky)
 
     while True:
         # Calcular as regras
         pacman.calcular_regras()
+        blinky.calcular_regras()
         cenario.calcular_regras()
         
         # Pintar a tela
         screen.fill(PRETO)
         cenario.pintar(screen)
         pacman.pintar(screen)
+        blinky.pintar(screen)
         pygame.display.update()
         pygame.time.delay(100)
 
